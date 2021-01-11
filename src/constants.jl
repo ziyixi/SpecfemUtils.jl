@@ -1,0 +1,16 @@
+const REGIONAL_MOHO_MESH = true
+const R_UNIT_SPHERE = 1.0f0
+const NGLLX = 5
+const NGLLY = 5
+const NGLLZ = 5
+const MIDX = 3
+const MIDY = 3
+const MIDZ = 3
+const GAUSSALPHA = 0.f0
+const GAUSSBETA = 0.f0
+const NGNOD = 27
+const IFLAG_DUMMY = 100
+const IFLAG_CRUST = 1
+const IFLAG_670_220 = 4
+const R_EARTH = 6371000.f0
+const R_EARTH_KM = R_EARTH / 1000.f0
