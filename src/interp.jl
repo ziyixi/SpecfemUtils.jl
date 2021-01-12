@@ -1,5 +1,6 @@
 using MPI
-using NetCDF
+using NCDatasets
+using ProgressMeter
 
 function main()
     MPI.Init()
@@ -29,7 +30,7 @@ end
 
 function get_coor(rank::Integer,command_args::CmdArgs)
     rank_lat = rank % command_args.latnproc + 1
-    rank_lon = div(rank , command_args.latnproc + 1)
+    rank_lon = div(rank , command_args.latnproc)+1
     coor_lat = array_split_mpi(1:command_args.latnpts, command_args.latnproc, rank_lat)
     coor_lon = array_split_mpi(1:command_args.lonnpts, command_args.lonnproc, rank_lon)
     return coor_lat,coor_lon
@@ -64,32 +65,31 @@ end
 
 
 function write_to_netcdf(model_interp::Array{Float32,4},command_args::CmdArgs)
+    ds = Dataset(command_args.output_file,"c")
+    defDim(ds,"lon",command_args.lonnpts)
+    defDim(ds,"lat",command_args.latnpts)
+    defDim(ds,"dep",command_args.vnpts)
+
     lon=collect(range(command_args.lon1, stop=command_args.lon2, length=command_args.lonnpts))
     lat=collect(range(command_args.lat1, stop=command_args.lat2, length=command_args.latnpts))
     dep=collect(range(command_args.dep1, stop=command_args.dep2, length=command_args.vnpts))
     lonatts = Dict("longname" => "Longitude", "units" => "degrees east")
     latatts = Dict("longname" => "Latitude", "units" => "degrees north")
     depatts = Dict("longname" => "Depth", "units" => "km")
-    
-    # it's pretty dangerous to delete a file, so we just write it
+    v=defVar(ds,"lon",Float32,("lon",),attrib=lonatts)
+    v[:]=lon
+    v=defVar(ds,"lat",Float32,("lat",),attrib=latatts)
+    v[:]=lat
+    v=defVar(ds,"dep",Float32,("dep",),attrib=depatts)
+    v[:]=dep
+
     for (index,each_tag) in enumerate(command_args.model_tags)
-        varatts=Dict("longname" => each_tag, "units" => "")
-        nccreate(
-        command_args.output_file,
-        each_tag,
-        "lon",
-        lon,
-        lonatts,
-        "lat",
-        lat,
-        latatts,
-        "dep",
-        dep,
-        depatts,
-        atts = varatts,
-        )
-        ncwrite(model_interp[:,:,:,index], command_args.output_file, each_tag)
+        v = defVar(ds,each_tag,Float32,("lon","lat","dep"),fillvalue = 9999.f0)
+        v[:,:,:]=model_interp[:,:,:,index]
     end
+
+    close(ds)
+    
 end
 
 
@@ -115,7 +115,7 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
     misloc_final = zeros(Float32, ngll_new_this_rank)
 
     stat_final .= -1
-    misloc_final .= Inf32
+    misloc_final .= 9999.f0
 
     nmodel = length(command_args.model_tags)
 
@@ -123,7 +123,12 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
     max_ngll_new_this_rank=MPI.Allreduce(ngll_new_this_rank,max, comm)
     model_interp_this_rank_tosend=zeros(Float32,nmodel, max_ngll_new_this_rank)
     model_interp_this_rank=@view(model_interp_this_rank_tosend[:,1:ngll_new_this_rank])
-    model_interp_this_rank .= 9999999.0f0
+    model_interp_this_rank .= 9999.f0
+
+    # * progressbar
+    if isroot
+        p = Progress(command_args.nproc_mesh, dt=1, desc="computing...",barglyphs=BarGlyphs("[=> ]"))
+    end
 
     # * loop for all points in xyz_new
     for iproc_old = 0:command_args.nproc_mesh - 1
@@ -138,6 +143,7 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
             old_y = mesh_old.xyz_glob[2,iglob]     
             old_z = mesh_old.xyz_glob[3,iglob]
             dist_this_spec = sqrt(minimum(@. (xyz_new[1,:] - old_x)^2 + (xyz_new[2,:] - old_y)^2 + (xyz_new[3,:] - old_z)^2))
+            min_dist = min(min_dist, dist_this_spec)
         end
         if min_dist > max_search_dist
             continue
@@ -166,18 +172,22 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
                 misloc_final[igll] = location_1slice[igll].misloc
             end
         end
+        if isroot
+            next!(p)
+        end
     end
     MPI.Barrier(comm)
 
     # * combine model_interp_this_rank_tosend
     all_model_interp_this_rank_tosend = MPI.Gather(model_interp_this_rank_tosend, root, comm)
-    # reshape to (nmodel,max_ngll_new_this_rank*nrank)
-    all_model_interp_this_rank_tosend_2D=reshape(all_model_interp_this_rank_tosend,nmodel,div(length(all_model_interp_this_rank_tosend) , nmodel))
     all_ngll_new_this_rank=MPI.Gather(ngll_new_this_rank, root, comm)
     # * combine all_model_interp_this_rank_tosend into a single model_interp array
     # * model_interp should be a 3D array here, as we will convert model_interp_this_rank to a 2D array
     if isroot
-        model_interp=zeros{Float32,command_args.lonnpts,command_args.latnpts,command_args.vnpts,nmodel}
+        p = Progress(length(all_ngll_new_this_rank), dt=1, desc="writing...",barglyphs=BarGlyphs("[=> ]"))
+        # reshape to (nmodel,max_ngll_new_this_rank*nrank)
+        all_model_interp_this_rank_tosend_2D=reshape(all_model_interp_this_rank_tosend,nmodel,div(length(all_model_interp_this_rank_tosend) , nmodel))
+        model_interp=zeros(Float32,command_args.lonnpts,command_args.latnpts,command_args.vnpts,nmodel)
         for each_rank in 0:(length(all_ngll_new_this_rank)-1)
             each_index=each_rank+1
             each_coor_lat,each_coor_lon=get_coor(each_rank,command_args)
@@ -193,7 +203,7 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
                     end
                 end
             end
-
+            next!(p)
         end
         # * write model_interp to a netcdf file
         write_to_netcdf(model_interp,command_args)

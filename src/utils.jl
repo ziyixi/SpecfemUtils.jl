@@ -94,7 +94,7 @@ function anchor_point_index()::Tuple{Array{Int32,1},Array{Int32,1},Array{Int32,1
 end
 
 
-function cube2xyz!(anchor_xyz::Array{Float32,2}, uvw::Array{Float32,1}, xyz::Array{Float32,1}, DuvwDxyz::Array{Float32,2})
+function cube2xyz(anchor_xyz::Array{Float32,2}, uvw::Array{Float32,1}, xyz::Array{Float32,1}, DuvwDxyz::Array{Float32,2})
     # lagrange polynomials of order 3 on [-1,1], with collocation points: -1,0,1 
     lag1 = @. uvw * (uvw - 1.0f0) / 2.0f0
     lag2 = @. 1.0f0 - uvw^2
@@ -187,7 +187,7 @@ function cube2xyz!(anchor_xyz::Array{Float32,2}, uvw::Array{Float32,1}, xyz::Arr
     if jacobian <= 0.f0
         @error "jacobian smaller than 0" jacobian anchor_xyz uvw
     end
-    return nothing
+    return xyz,DuvwDxyz
 end
 
 
@@ -199,12 +199,12 @@ function xyz2cube_bounded(xyz_anchor::Array{Float32,2}, xyz::Array{Float32,1})::
     flag_inside = true
 
     for iter in 1:niter
-        cube2xyz!(xyz_anchor, uvw, xyzi, DuvwDxyz)
+        xyzi, DuvwDxyz=cube2xyz(xyz_anchor, uvw, xyzi, DuvwDxyz)
         dxyz = xyz - xyzi
         duvw = DuvwDxyz * dxyz
         uvw = uvw + duvw
         # limit inside the cube
-        if any(uvw .< -1 || uvw .> 1)
+        if any(uvw .< -1) || any(uvw .> 1)
             @. uvw[uvw < -1] = -1
             @. uvw[uvw > 1] = 1
             if iter == niter
@@ -213,7 +213,7 @@ function xyz2cube_bounded(xyz_anchor::Array{Float32,2}, xyz::Array{Float32,1})::
         end
     end
     # calculate the predicted position 
-    cube2xyz!(xyz_anchor, uvw, xyzi, DuvwDxyz)
+    cube2xyz(xyz_anchor, uvw, xyzi, DuvwDxyz)
     # residual distance from the target point
     misloc = sqrt(sum((xyz .- xyzi).^2))
 

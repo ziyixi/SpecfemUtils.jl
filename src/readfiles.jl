@@ -2,12 +2,13 @@ using FortranFiles
 
 function sem_mesh_read(basedir::String, iproc::Integer)::Sem_mesh_data
     f = sem_io_open_file_for_read(basedir, iproc, "solver_data") 
-    nspec, nglob = read(f, Int32, Int32)
+    nspec= read(f, Int32)
+    nglob=read(f, Int32)
 
     mesh_data = Sem_mesh_data(nspec, nglob)
-    read(f, mesh_data.xyz_glob[1,:])
-    read(f, mesh_data.xyz_glob[2,:])
-    read(f, mesh_data.xyz_glob[3,:])
+    mesh_data.xyz_glob[1,:]=read(f, (Float32, nglob))
+    mesh_data.xyz_glob[2,:]=read(f, (Float32, nglob))
+    mesh_data.xyz_glob[3,:]=read(f, (Float32, nglob))
     read(f, mesh_data.ibool)
     read(f, mesh_data.idoubling)
     read(f, mesh_data.ispec_is_tiso)
@@ -59,30 +60,21 @@ function sem_io_open_file_for_write(basedir::String, iproc::Integer, tag::String
     return f
 end
 
-function sem_io_read_gll_file_1!(basedir::String, iproc::Integer, model_name::String, model_gll::AbstractArray{Float32,4})
+function sem_io_read_gll_file_1!(basedir::String, iproc::Integer, model_name::String, model_gll::Array{Float32,4})
+    nspec = size(model_gll)[4]
     f = sem_io_open_file_for_read(basedir, iproc, model_name)
-    read(f, model_gll)
+
+    dummy = zeros(Float32, NGLLX, NGLLY, NGLLZ, nspec)
+    read(f, dummy)
     close(f)
-    return nothing
+    model_gll .= dummy
 end
 
-function sem_io_read_gll_file_n!(basedir::String, iproc::Integer, model_names::Vector{String}, nmodel::Integer, model_gll::AbstractArray{Float32,5})
+function sem_io_read_gll_file_n!(basedir::String, iproc::Integer, model_names::Vector{String}, nmodel::Int64, model_gll::Array{Float32,5})
+    dummy = similar(model_gll[1,:,:,:,:])
     for imodel = 1:nmodel
-        sem_io_read_gll_file_1!(basedir, iproc, model_names[imodel], @view(model_gll[imodel,:,:,:,:]))
-    end
-    return nothing
-end
-
-function sem_io_write_gll_file_1(basedir::String, iproc::Integer, model_name::String, model_gll::AbstractArray{Float32,4})
-    f = sem_io_open_file_for_write(basedir, iproc, model_name)
-    write(f, model_gll)
-    close(f)
-    return nothing
-end
-
-function sem_io_write_gll_file_n(basedir::String, iproc::Integer, model_names::Vector{String}, nmodel::Integer, model_gll::AbstractArray{Float32,5})
-    for imodel = 1:nmodel
-        sem_io_write_gll_file_1(basedir, iproc, model_names[imodel], model_gll[imodel,:,:,:,:])
+        sem_io_read_gll_file_1!(basedir, iproc, model_names[imodel], dummy)
+        model_gll[imodel,:,:,:,:] = dummy
     end
     return nothing
 end
