@@ -1,6 +1,5 @@
 using MPI
 using NCDatasets
-using ProgressMeter
 
 function main()
     MPI.Init()
@@ -125,10 +124,11 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
     model_interp_this_rank=@view(model_interp_this_rank_tosend[:,1:ngll_new_this_rank])
     model_interp_this_rank .= 9999.f0
 
-    # * progressbar
-    if command_args.progress
-        p_computing = Progress(command_args.nproc_mesh, dt=1, desc="computing...",barglyphs=BarGlyphs("[=> ]"))
-    end
+    # * for progress
+    iproc_finished=[0]
+    win_iproc_finished = MPI.Win_create(iproc_finished, comm)
+    MPI.Win_fence(0, win)
+
 
     # * loop for all points in xyz_new
     for iproc_old = 0:command_args.nproc_mesh - 1
@@ -172,11 +172,26 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
                 misloc_final[igll] = location_1slice[igll].misloc
             end
         end
-        if command_args.progress
-            next!(p_computing)
+        # * for progress
+        MPI.Win_lock(MPI.LOCK_EXCLUSIVE, rank, 0, win_iproc_finished)
+        iproc_finished[1]+=1
+        MPI.Win_unlock(rank,win_iproc_finished)
+        all_iproc_finished=iproc_finished[1]
+        # get iproc_finished from other processes, update all_iproc_finished
+        for each_rank in 0:(nrank-1)
+            if each_rank!=rank
+                MPI.Win_lock(MPI.LOCK_EXCLUSIVE, each_rank, 0, win_iproc_finished)
+                received=similar(iproc_finished)
+                MPI.Get(received, each_rank, win_iproc_finished)
+                all_iproc_finished+=received[1]
+                MPI.Win_unlock(each_rank,win_iproc_finished)
+            end
         end
+        @info "[current rank: $(rank)] finished $(all_iproc_finished)/$(nrank*command_args.nproc_mesh)"
+
     end
     MPI.Barrier(comm)
+    MPI.free(win_iproc_finished)
 
     # * combine model_interp_this_rank_tosend
     all_model_interp_this_rank_tosend = MPI.Gather(model_interp_this_rank_tosend, root, comm)
@@ -184,9 +199,6 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
     # * combine all_model_interp_this_rank_tosend into a single model_interp array
     # * model_interp should be a 3D array here, as we will convert model_interp_this_rank to a 2D array
     if isroot
-        if command_args.progress
-            p_writing = Progress(length(all_ngll_new_this_rank), dt=1, desc="writing...",barglyphs=BarGlyphs("[=> ]"))
-        end
         # reshape to (nmodel,max_ngll_new_this_rank*nrank)
         all_model_interp_this_rank_tosend_2D=reshape(all_model_interp_this_rank_tosend,nmodel,div(length(all_model_interp_this_rank_tosend) , nmodel))
         model_interp=zeros(Float32,command_args.lonnpts,command_args.latnpts,command_args.vnpts,nmodel)
@@ -204,9 +216,6 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
                         id+=1
                     end
                 end
-            end
-            if command_args.progress
-                next!(p_writing)
             end
         end
         # * write model_interp to a netcdf file
