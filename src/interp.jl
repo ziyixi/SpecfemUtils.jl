@@ -125,9 +125,11 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
     model_interp_this_rank .= 9999.f0
 
     # * for progress
-    iproc_finished=[0]
-    win_iproc_finished = MPI.Win_create(iproc_finished, comm)
-    MPI.Win_fence(0, win)
+    if command_args.progress
+        iproc_finished=[0]
+        win_iproc_finished = MPI.Win_create(iproc_finished, comm)
+        MPI.Win_fence(0, win_iproc_finished)
+    end
 
 
     # * loop for all points in xyz_new
@@ -173,21 +175,23 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
             end
         end
         # * for progress
-        MPI.Win_lock(MPI.LOCK_EXCLUSIVE, rank, 0, win_iproc_finished)
-        iproc_finished[1]+=1
-        MPI.Win_unlock(rank,win_iproc_finished)
-        all_iproc_finished=iproc_finished[1]
-        # get iproc_finished from other processes, update all_iproc_finished
-        for each_rank in 0:(nrank-1)
-            if each_rank!=rank
-                MPI.Win_lock(MPI.LOCK_EXCLUSIVE, each_rank, 0, win_iproc_finished)
-                received=similar(iproc_finished)
-                MPI.Get(received, each_rank, win_iproc_finished)
-                all_iproc_finished+=received[1]
-                MPI.Win_unlock(each_rank,win_iproc_finished)
+        if command_args.progress
+            MPI.Win_lock(MPI.LOCK_EXCLUSIVE, rank, 0, win_iproc_finished)
+            iproc_finished[1]+=1
+            MPI.Win_unlock(rank,win_iproc_finished)
+            all_iproc_finished=iproc_finished[1]
+            # get iproc_finished from other processes, update all_iproc_finished
+            for each_rank in 0:(nrank-1)
+                if each_rank!=rank
+                    MPI.Win_lock(MPI.LOCK_EXCLUSIVE, each_rank, 0, win_iproc_finished)
+                    received=similar(iproc_finished)
+                    MPI.Get(received, each_rank, win_iproc_finished)
+                    all_iproc_finished+=received[1]
+                    MPI.Win_unlock(each_rank,win_iproc_finished)
+                end
             end
+            @info "[current rank: $(rank)] finished $(all_iproc_finished)/$(nrank*command_args.nproc_mesh)"
         end
-        @info "[current rank: $(rank)] finished $(all_iproc_finished)/$(nrank*command_args.nproc_mesh)"
 
     end
     MPI.Barrier(comm)
