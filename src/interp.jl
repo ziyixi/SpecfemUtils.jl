@@ -126,7 +126,7 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
     model_interp_this_rank .= 9999.f0
 
     # * progressbar
-    if isroot
+    if command_args.progress
         p_computing = Progress(command_args.nproc_mesh, dt=1, desc="computing...",barglyphs=BarGlyphs("[=> ]"))
     end
 
@@ -172,7 +172,7 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
                 misloc_final[igll] = location_1slice[igll].misloc
             end
         end
-        if isroot
+        if command_args.progress
             next!(p_computing)
         end
     end
@@ -184,7 +184,9 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
     # * combine all_model_interp_this_rank_tosend into a single model_interp array
     # * model_interp should be a 3D array here, as we will convert model_interp_this_rank to a 2D array
     if isroot
-        p_writing = Progress(length(all_ngll_new_this_rank), dt=1, desc="writing...",barglyphs=BarGlyphs("[=> ]"))
+        if command_args.progress
+            p_writing = Progress(length(all_ngll_new_this_rank), dt=1, desc="writing...",barglyphs=BarGlyphs("[=> ]"))
+        end
         # reshape to (nmodel,max_ngll_new_this_rank*nrank)
         all_model_interp_this_rank_tosend_2D=reshape(all_model_interp_this_rank_tosend,nmodel,div(length(all_model_interp_this_rank_tosend) , nmodel))
         model_interp=zeros(Float32,command_args.lonnpts,command_args.latnpts,command_args.vnpts,nmodel)
@@ -203,7 +205,9 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
                     end
                 end
             end
-            next!(p_writing)
+            if command_args.progress
+                next!(p_writing)
+            end
         end
         # * write model_interp to a netcdf file
         write_to_netcdf(model_interp,command_args)

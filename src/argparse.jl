@@ -42,6 +42,9 @@ function parse_commandline()::CmdArgs
         """--flag_ellipticity"""
         help = "if the mesh is ellipticity"
         action = :store_true
+        """--progress"""
+        help = "if show the progress bar"
+        action = :store_true
     end
     parsed_dict = parse_args(s)
     return CmdArgs(parsed_dict)

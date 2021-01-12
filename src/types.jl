@@ -44,6 +44,7 @@ struct CmdArgs
     NEX_XI_VAL::Integer
     NEX_ETA_VAL::Integer
     flag_ellipticity::Bool
+    progress::Bool
 
     CmdArgs(parsed_dict::Dict) = begin
         nproc_mesh = parsed_dict["nproc_mesh"]
@@ -58,9 +59,10 @@ struct CmdArgs
         ANGULAR_WIDTH_XI_IN_DEGREES_VAL, ANGULAR_WIDTH_ETA_IN_DEGREES_VAL = [parse(Float32,i) for i in mesh_info_list[1:2]]
         NEX_XI_VAL, NEX_ETA_VAL = [parse(Int32,i) for i in mesh_info_list[3:end]]
         flag_ellipticity = parsed_dict["flag_ellipticity"]
+        progress = parsed_dict["progress"]
         new(nproc_mesh,mesh_dir,model_dir,model_tags,output_file,lon1,lon2,lat1,lat2,dep1,
             dep2,lonnpts,latnpts,vnpts,lonnproc,latnproc,ANGULAR_WIDTH_XI_IN_DEGREES_VAL,
-            ANGULAR_WIDTH_ETA_IN_DEGREES_VAL,NEX_XI_VAL,NEX_ETA_VAL,flag_ellipticity)
+            ANGULAR_WIDTH_ETA_IN_DEGREES_VAL,NEX_XI_VAL,NEX_ETA_VAL,flag_ellipticity,progress)
     end
 
     CmdArgs() = new()
