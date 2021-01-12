@@ -67,7 +67,7 @@ function anchor_point_index()::Tuple{Array{Int32,1},Array{Int32,1},Array{Int32,1
         elseif iaddx[index] == 2
             iaddx[index] = NGLLX
         else
-            @error "incorrect value of iaddx"
+            error("incorrect value of iaddx")
         end
 
         if iaddy[index] == 0
@@ -77,7 +77,7 @@ function anchor_point_index()::Tuple{Array{Int32,1},Array{Int32,1},Array{Int32,1
         elseif iaddy[index] == 2
             iaddy[index] = NGLLY
         else
-            @error "incorrect value of iaddy"
+            error("incorrect value of iaddy")
         end
 
         if iaddz[index] == 0
@@ -87,7 +87,7 @@ function anchor_point_index()::Tuple{Array{Int32,1},Array{Int32,1},Array{Int32,1
         elseif iaddz[index] == 2
             iaddz[index] = NGLLZ
         else
-            @error "incorrect value of iaddz"
+            error("incorrect value of iaddz")
         end
     end
     return iaddx, iaddy, iaddz
@@ -185,7 +185,7 @@ function cube2xyz(anchor_xyz::Array{Float32,2}, uvw::Array{Float32,1}, xyz::Arra
     DuvwDxyz = inv(DxyzDuvw)
 
     if jacobian <= 0.f0
-        @error "jacobian smaller than 0" jacobian anchor_xyz uvw
+        error("jacobian smaller than 0")
     end
     return xyz,DuvwDxyz
 end
