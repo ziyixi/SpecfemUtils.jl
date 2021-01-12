@@ -148,6 +148,11 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
             min_dist = min(min_dist, dist_this_spec)
         end
         if min_dist > max_search_dist
+            if command_args.progress
+                MPI.Win_lock(MPI.LOCK_EXCLUSIVE, rank, 0, win_iproc_finished)
+                iproc_finished[1]+=1
+                MPI.Win_unlock(rank,win_iproc_finished)
+            end
             continue
         end
 
@@ -186,8 +191,8 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
                     MPI.Win_lock(MPI.LOCK_EXCLUSIVE, each_rank, 0, win_iproc_finished)
                     received=similar(iproc_finished)
                     MPI.Get(received, each_rank, win_iproc_finished)
-                    all_iproc_finished+=received[1]
                     MPI.Win_unlock(each_rank,win_iproc_finished)
+                    all_iproc_finished+=received[1]
                 end
             end
             @info "[current rank: $(rank)] finished $(all_iproc_finished)/$(nrank*command_args.nproc_mesh)"
@@ -195,7 +200,9 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
 
     end
     MPI.Barrier(comm)
-    MPI.free(win_iproc_finished)
+    if command_args.progress
+        MPI.free(win_iproc_finished)
+    end
 
     # * combine model_interp_this_rank_tosend
     all_model_interp_this_rank_tosend = MPI.Gather(model_interp_this_rank_tosend, root, comm)
