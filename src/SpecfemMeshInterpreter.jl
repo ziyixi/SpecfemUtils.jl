@@ -7,6 +7,16 @@ include("./utils.jl")
 include("./kdtree.jl")
 include("./interp.jl")
 
-export main
+function julia_main()
+    try
+        main()
+    catch
+        Base.invokelatest(Base.display_error, Base.catch_stack())
+        return 1
+    end
+    return 0
+end
+
+export main,julia_main
 
 end # module
