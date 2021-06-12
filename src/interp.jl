@@ -82,9 +82,11 @@ function write_to_netcdf(model_interp::Array{Float32,4},command_args::CmdArgs)
     v=defVar(ds,"dep",Float32,("dep",),attrib=depatts)
     v[:]=dep
 
+    model_interp_reverse_axis=permutedims(model_interp,[3,2,1,4])
     for (index,each_tag) in enumerate(command_args.model_tags)
-        v = defVar(ds,each_tag,Float32,("lon","lat","dep"),fillvalue = 9999.f0)
-        v[:,:,:]=model_interp[:,:,:,index]
+        # julia has the reversed axis for netcdf
+        v = defVar(ds,each_tag,Float32,("dep","lat","lon"),fillvalue = 9999999.f0)
+        v[:,:,:]=model_interp_reverse_axis[:,:,:,index]
     end
 
     close(ds)
