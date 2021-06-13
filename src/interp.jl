@@ -124,7 +124,7 @@ function run_interp(comm::MPI.Comm,command_args::CmdArgs)
     max_ngll_new_this_rank=MPI.Allreduce(ngll_new_this_rank,max, comm)
     model_interp_this_rank_tosend=zeros(Float32,nmodel, max_ngll_new_this_rank)
     model_interp_this_rank=@view(model_interp_this_rank_tosend[:,1:ngll_new_this_rank])
-    model_interp_this_rank .= 9999.f0
+    model_interp_this_rank .= 9999999.f0
 
     # * for progress
     if command_args.progress
