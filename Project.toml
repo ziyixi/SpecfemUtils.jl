@@ -1,4 +1,4 @@
-name = "SpecfemMeshInterpreter"
+name = "SpecfemUtils"
 uuid = "76d755e8-4c39-4ced-ac7c-fec8cf5acd41"
 authors = ["ziyixi <ziyixi@mail.ustc.edu.cn>"]
 version = "0.1.0"

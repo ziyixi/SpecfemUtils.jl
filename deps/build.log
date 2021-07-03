@@ -1,0 +1,7 @@
+running SpecfemUtils/build.jl
+scriptsdir = "/Users/ziyixi/OneDrive - Michigan State University/Research/SpecfemUtils.jl/scripts"
+targetdir = "/Users/ziyixi/.specfem"
+t = "/Users/ziyixi/.specfem/debugScript"
+adding /Users/ziyixi/OneDrive - Michigan State University/Research/SpecfemUtils.jl/scripts/debugScript.jl /Users/ziyixi/.specfem/debugScript (overwriting)
+t = "/Users/ziyixi/.specfem/meshInterpreter"
+adding /Users/ziyixi/OneDrive - Michigan State University/Research/SpecfemUtils.jl/scripts/meshInterpreter.jl /Users/ziyixi/.specfem/meshInterpreter (overwriting)
