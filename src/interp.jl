@@ -65,9 +65,9 @@ end
 
 function write_to_netcdf(model_interp::Array{Float32,4},command_args::CmdArgs)
     ds = Dataset(command_args.output_file,"c")
-    defDim(ds,"lon",command_args.lonnpts)
-    defDim(ds,"lat",command_args.latnpts)
-    defDim(ds,"dep",command_args.vnpts)
+    defDim(ds,"longitude",command_args.lonnpts)
+    defDim(ds,"latitude",command_args.latnpts)
+    defDim(ds,"depth",command_args.vnpts)
 
     lon=collect(range(command_args.lon1, stop=command_args.lon2, length=command_args.lonnpts))
     lat=collect(range(command_args.lat1, stop=command_args.lat2, length=command_args.latnpts))
@@ -75,17 +75,17 @@ function write_to_netcdf(model_interp::Array{Float32,4},command_args::CmdArgs)
     lonatts = Dict("longname" => "Longitude", "units" => "degrees east")
     latatts = Dict("longname" => "Latitude", "units" => "degrees north")
     depatts = Dict("longname" => "Depth", "units" => "km")
-    v=defVar(ds,"lon",Float32,("lon",),attrib=lonatts)
+    v=defVar(ds,"longitude",Float32,("longitude",),attrib=lonatts)
     v[:]=lon
-    v=defVar(ds,"lat",Float32,("lat",),attrib=latatts)
+    v=defVar(ds,"latitude",Float32,("latitude",),attrib=latatts)
     v[:]=lat
-    v=defVar(ds,"dep",Float32,("dep",),attrib=depatts)
+    v=defVar(ds,"depth",Float32,("depth",),attrib=depatts)
     v[:]=dep
 
     model_interp_reverse_axis=permutedims(model_interp,[3,2,1,4])
     for (index,each_tag) in enumerate(command_args.model_tags)
         # julia has the reversed axis for netcdf
-        v = defVar(ds,each_tag,Float32,("dep","lat","lon"),fillvalue = 9999999.f0)
+        v = defVar(ds,each_tag,Float32,("depth","latitude","longitude"),fillvalue = 9999999.f0)
         v[:,:,:]=model_interp_reverse_axis[:,:,:,index]
     end
 
