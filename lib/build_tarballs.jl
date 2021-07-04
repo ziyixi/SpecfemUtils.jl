@@ -1,10 +1,8 @@
-using BinaryBuilder,Pkg
+using BinaryBuilder, Pkg
 
 name = "libspecfemUtils"
 version = v"0.0.1"
-sources = [
-    DirectorySource(joinpath(@__DIR__,  "src")),
-]
+sources = [DirectorySource(joinpath(@__DIR__, "src"))]
 
 script = raw"""
 cd ${WORKSPACE}/srcdir
@@ -15,18 +13,27 @@ cmake --build .
 cmake --install .
 """
 
-platforms = [
-    Platform("x86_64", "linux"),
-    Platform("x86_64", "macos")
-]
+platforms = [Platform("x86_64", "linux"), Platform("x86_64", "macos")]
 
-products = [
-    LibraryProduct("libspecfemUtils", :libspecfemUtils),
-]
+products = [LibraryProduct("libspecfemUtils", :libspecfemUtils)]
 
 dependencies = [
-    Dependency(PackageSpec(name="CompilerSupportLibraries_jll", uuid="e66e0078-7015-5450-92f7-15fbd957f2ae")),
+    Dependency(
+        PackageSpec(
+            name = "CompilerSupportLibraries_jll",
+            uuid = "e66e0078-7015-5450-92f7-15fbd957f2ae",
+        ),
+    ),
 ]
 
-build_tarballs(ARGS, name, version, sources, script, expand_gfortran_versions(platforms), products, dependencies)
+build_tarballs(
+    ARGS,
+    name,
+    version,
+    sources,
+    script,
+    expand_gfortran_versions(platforms),
+    products,
+    dependencies,
+)
 

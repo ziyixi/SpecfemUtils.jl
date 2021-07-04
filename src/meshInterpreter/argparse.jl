@@ -1,7 +1,15 @@
 using ArgParse
 
+"""
+    parse_commandline()::CmdArgs
+
+Parse the arguments for the script.
+"""
 function parse_commandline()::CmdArgs
-    s = ArgParseSettings(prog="MeshInterpreter", description="""Interpolate the mesh files of Specfem3D Globe and generate the evenly spaced Netcdf file.""")
+    s = ArgParseSettings(
+        prog = "MeshInterpreter",
+        description = """Interpolate the mesh files of Specfem3D Globe and generate the evenly spaced Netcdf file.""",
+    )
     @add_arg_table! s begin
         """--nproc_mesh"""
         help = "number of slices of the mesh"

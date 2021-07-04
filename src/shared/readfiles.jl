@@ -1,14 +1,14 @@
 using FortranFiles
 
 function sem_mesh_read(basedir::String, iproc::Integer)::Sem_mesh_data
-    f = sem_io_open_file_for_read(basedir, iproc, "solver_data") 
-    nspec= read(f, Int32)
-    nglob=read(f, Int32)
+    f = sem_io_open_file_for_read(basedir, iproc, "solver_data")
+    nspec = read(f, Int32)
+    nglob = read(f, Int32)
 
     mesh_data = Sem_mesh_data(nspec, nglob)
-    mesh_data.xyz_glob[1,:]=read(f, (Float32, nglob))
-    mesh_data.xyz_glob[2,:]=read(f, (Float32, nglob))
-    mesh_data.xyz_glob[3,:]=read(f, (Float32, nglob))
+    mesh_data.xyz_glob[1, :] = read(f, (Float32, nglob))
+    mesh_data.xyz_glob[2, :] = read(f, (Float32, nglob))
+    mesh_data.xyz_glob[3, :] = read(f, (Float32, nglob))
     read(f, mesh_data.ibool)
     read(f, mesh_data.idoubling)
     read(f, mesh_data.ispec_is_tiso)
@@ -34,8 +34,8 @@ function sem_mesh_read(basedir::String, iproc::Integer)::Sem_mesh_data
         if mesh_data.idoubling[ispec] == IFLAG_670_220
             iglob = mesh_data.ibool[MIDX, MIDY, MIDZ, ispec]
             # element center coordinate
-            xyz_center = mesh_data.xyz_glob[:,iglob]
-            depth = (1.0f0 - sqrt(sum(mesh_data.xyz_glob[:,iglob].^2))) * R_EARTH_KM
+            xyz_center = mesh_data.xyz_glob[:, iglob]
+            depth = (1.0f0 - sqrt(sum(mesh_data.xyz_glob[:, iglob] .^ 2))) * R_EARTH_KM
             # this is dangerous due to 410 undulation
             # depth < 410 ? mesh_data.idoubling(ispec) = 10 * IFLAG_670_220 : mesh_data.idoubling(ispec) = 10 * IFLAG_670_220 + 1
             if depth < 410
@@ -48,19 +48,32 @@ function sem_mesh_read(basedir::String, iproc::Integer)::Sem_mesh_data
     return mesh_data
 end
 
-function sem_io_open_file_for_read(basedir::String, iproc::Integer, tag::String)::FortranFile
+function sem_io_open_file_for_read(
+    basedir::String,
+    iproc::Integer,
+    tag::String,
+)::FortranFile
     filename = "$(basedir)/proc$(lpad(string(iproc), 6, '0'))_reg1_$(tag).bin"
     f = FortranFile(filename)
     return f
 end
 
-function sem_io_open_file_for_write(basedir::String, iproc::Integer, tag::String)::FortranFile
+function sem_io_open_file_for_write(
+    basedir::String,
+    iproc::Integer,
+    tag::String,
+)::FortranFile
     filename = "$(basedir)/proc$(lpad(string(iproc), 6, '0'))_reg1_$(tag).bin"
     f = FortranFile(filename, "w")
     return f
 end
 
-function sem_io_read_gll_file_1!(basedir::String, iproc::Integer, model_name::String, model_gll::Array{Float32,4})
+function sem_io_read_gll_file_1!(
+    basedir::String,
+    iproc::Integer,
+    model_name::String,
+    model_gll::Array{Float32,4},
+)
     nspec = size(model_gll)[4]
     f = sem_io_open_file_for_read(basedir, iproc, model_name)
 
@@ -70,11 +83,17 @@ function sem_io_read_gll_file_1!(basedir::String, iproc::Integer, model_name::St
     model_gll .= dummy
 end
 
-function sem_io_read_gll_file_n!(basedir::String, iproc::Integer, model_names::Vector{String}, nmodel::Int64, model_gll::Array{Float32,5})
-    dummy = similar(model_gll[1,:,:,:,:])
+function sem_io_read_gll_file_n!(
+    basedir::String,
+    iproc::Integer,
+    model_names::Vector{String},
+    nmodel::Int64,
+    model_gll::Array{Float32,5},
+)
+    dummy = similar(model_gll[1, :, :, :, :])
     for imodel = 1:nmodel
         sem_io_read_gll_file_1!(basedir, iproc, model_names[imodel], dummy)
-        model_gll[imodel,:,:,:,:] = dummy
+        model_gll[imodel, :, :, :, :] = dummy
     end
     return nothing
 end

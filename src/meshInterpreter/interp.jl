@@ -1,6 +1,10 @@
-using NCDatasets:Dataset,defDim,defVar,close
+using NCDatasets: Dataset, defDim, defVar, close
 
-function array_split_mpi(input_array::AbstractArray{T}, num_split::Integer, rank::Integer)::AbstractArray{T} where T <: Integer
+function array_split_mpi(
+    input_array::AbstractArray{T},
+    num_split::Integer,
+    rank::Integer,
+)::AbstractArray{T} where {T<:Integer}
     div_result = div(length(input_array), num_split)
     mod_result = mod(length(input_array), num_split)
     startindex = 0
@@ -8,8 +12,9 @@ function array_split_mpi(input_array::AbstractArray{T}, num_split::Integer, rank
     if rank <= mod_result
         startindex = (div_result + 1) * (rank - 1) + 1
         endindex = startindex + div_result
-    else 
-        startindex = (div_result + 1) * mod_result + div_result * (rank - mod_result - 1) + 1
+    else
+        startindex =
+            (div_result + 1) * mod_result + div_result * (rank - mod_result - 1) + 1
         endindex = startindex + div_result - 1
     end
     return input_array[startindex:endindex]
@@ -35,14 +40,31 @@ function generate_profile_points(rank::Integer, command_args::CmdArgs)
     # * fill in deplatlon_new of this rank
     latnpts_this_rank = length(coor_lat)
     lonnpts_this_rank = length(coor_lon)
-    for (vindex, dep) in enumerate(range(command_args.dep1, stop=command_args.dep2, length=command_args.vnpts))
-        for (latindex, lat) in enumerate(range(command_args.lat1, stop=command_args.lat2, length=command_args.latnpts)[coor_lat])
-            for (lonindex, lon) in enumerate(range(command_args.lon1, stop=command_args.lon2, length=command_args.lonnpts)[coor_lon])
-                id = (vindex - 1) * latnpts_this_rank * lonnpts_this_rank + (latindex - 1) * lonnpts_this_rank + lonindex
+    for (vindex, dep) in enumerate(
+        range(command_args.dep1, stop = command_args.dep2, length = command_args.vnpts),
+    )
+        for (latindex, lat) in enumerate(
+            range(
+                command_args.lat1,
+                stop = command_args.lat2,
+                length = command_args.latnpts,
+            )[coor_lat],
+        )
+            for (lonindex, lon) in enumerate(
+                range(
+                    command_args.lon1,
+                    stop = command_args.lon2,
+                    length = command_args.lonnpts,
+                )[coor_lon],
+            )
+                id =
+                    (vindex - 1) * latnpts_this_rank * lonnpts_this_rank +
+                    (latindex - 1) * lonnpts_this_rank +
+                    lonindex
                 if command_args.flag_ellipticity
-                    xyz_new[:,id] = latlondep2xyz(lat, lon, dep)
+                    xyz_new[:, id] = latlondep2xyz(lat, lon, dep)
                 else
-                    xyz_new[:,id] = latlondep2xyz_sphere(lat, lon, dep)
+                    xyz_new[:, id] = latlondep2xyz_sphere(lat, lon, dep)
                 end
             end
         end
@@ -57,28 +79,40 @@ function write_to_netcdf(model_interp::Array{Float32,4}, command_args::CmdArgs)
     defDim(ds, "latitude", command_args.latnpts)
     defDim(ds, "depth", command_args.vnpts)
 
-    lon = collect(range(command_args.lon1, stop=command_args.lon2, length=command_args.lonnpts))
-    lat = collect(range(command_args.lat1, stop=command_args.lat2, length=command_args.latnpts))
-    dep = collect(range(command_args.dep1, stop=command_args.dep2, length=command_args.vnpts))
+    lon = collect(
+        range(command_args.lon1, stop = command_args.lon2, length = command_args.lonnpts),
+    )
+    lat = collect(
+        range(command_args.lat1, stop = command_args.lat2, length = command_args.latnpts),
+    )
+    dep = collect(
+        range(command_args.dep1, stop = command_args.dep2, length = command_args.vnpts),
+    )
     lonatts = Dict("longname" => "Longitude", "units" => "degrees east")
     latatts = Dict("longname" => "Latitude", "units" => "degrees north")
     depatts = Dict("longname" => "Depth", "units" => "km")
-    v = defVar(ds, "longitude", Float32, ("longitude",), attrib=lonatts)
+    v = defVar(ds, "longitude", Float32, ("longitude",), attrib = lonatts)
     v[:] = lon
-    v = defVar(ds, "latitude", Float32, ("latitude",), attrib=latatts)
+    v = defVar(ds, "latitude", Float32, ("latitude",), attrib = latatts)
     v[:] = lat
-    v = defVar(ds, "depth", Float32, ("depth",), attrib=depatts)
+    v = defVar(ds, "depth", Float32, ("depth",), attrib = depatts)
     v[:] = dep
 
-    model_interp_reverse_axis = permutedims(model_interp, [3,2,1,4])
+    model_interp_reverse_axis = permutedims(model_interp, [3, 2, 1, 4])
     for (index, each_tag) in enumerate(command_args.model_tags)
         # julia has the reversed axis for netcdf
-        v = defVar(ds, each_tag, Float32, ("depth", "latitude", "longitude"), fillvalue=9999999.f0)
-        v[:,:,:] = model_interp_reverse_axis[:,:,:,index]
+        v = defVar(
+            ds,
+            each_tag,
+            Float32,
+            ("depth", "latitude", "longitude"),
+            fillvalue = 9999999.0f0,
+        )
+        v[:, :, :] = model_interp_reverse_axis[:, :, :, index]
     end
 
     close(ds)
-    
+
 end
 
 
@@ -86,11 +120,17 @@ function run_interp(comm::MPI.Comm, command_args::CmdArgs)
     rank = MPI.Comm_rank(comm)
     nrank = MPI.Comm_size(comm)
     root = 0
-    isroot = rank == root    
+    isroot = rank == root
 
     # * interpolate old mesh/model onto new mesh
     # typical element size at surface for old mesh
-    typical_size = deg2rad(max(command_args.ANGULAR_WIDTH_XI_IN_DEGREES_VAL / command_args.NEX_XI_VAL, command_args.ANGULAR_WIDTH_ETA_IN_DEGREES_VAL / command_args.NEX_ETA_VAL)) * R_UNIT_SPHERE
+    typical_size =
+        deg2rad(
+            max(
+                command_args.ANGULAR_WIDTH_XI_IN_DEGREES_VAL / command_args.NEX_XI_VAL,
+                command_args.ANGULAR_WIDTH_ETA_IN_DEGREES_VAL / command_args.NEX_ETA_VAL,
+            ),
+        ) * R_UNIT_SPHERE
     max_search_dist = 10.0f0 * typical_size
     max_misloc = typical_size / 4.0f0
 
@@ -104,15 +144,15 @@ function run_interp(comm::MPI.Comm, command_args::CmdArgs)
     misloc_final = zeros(Float32, ngll_new_this_rank)
 
     stat_final .= -1
-    misloc_final .= 9999.f0
+    misloc_final .= 9999.0f0
 
     nmodel = length(command_args.model_tags)
 
     # for mpi gather in the future
     max_ngll_new_this_rank = MPI.Allreduce(ngll_new_this_rank, max, comm)
     model_interp_this_rank_tosend = zeros(Float32, nmodel, max_ngll_new_this_rank)
-    model_interp_this_rank = @view(model_interp_this_rank_tosend[:,1:ngll_new_this_rank])
-    model_interp_this_rank .= 9999999.f0
+    model_interp_this_rank = @view(model_interp_this_rank_tosend[:, 1:ngll_new_this_rank])
+    model_interp_this_rank .= 9999999.0f0
 
     # * for progress
     if command_args.progress
@@ -123,18 +163,24 @@ function run_interp(comm::MPI.Comm, command_args::CmdArgs)
 
 
     # * loop for all points in xyz_new
-    for iproc_old = 0:command_args.nproc_mesh - 1
+    for iproc_old = 0:command_args.nproc_mesh-1
         mesh_old = sem_mesh_read(command_args.mesh_dir, iproc_old)
         nspec_old = mesh_old.nspec
         min_dist = Inf32
 
         # test if the new and old mesh slices are separated apart
         for ispec = 1:nspec_old
-            iglob = mesh_old.ibool[MIDX,MIDY,MIDZ,ispec]
-            old_x = mesh_old.xyz_glob[1,iglob]
-            old_y = mesh_old.xyz_glob[2,iglob]     
-            old_z = mesh_old.xyz_glob[3,iglob]
-            dist_this_spec = sqrt(minimum(@. (xyz_new[1,:] - old_x)^2 + (xyz_new[2,:] - old_y)^2 + (xyz_new[3,:] - old_z)^2))
+            iglob = mesh_old.ibool[MIDX, MIDY, MIDZ, ispec]
+            old_x = mesh_old.xyz_glob[1, iglob]
+            old_y = mesh_old.xyz_glob[2, iglob]
+            old_z = mesh_old.xyz_glob[3, iglob]
+            dist_this_spec = sqrt(
+                minimum(
+                    @. (xyz_new[1, :] - old_x)^2 +
+                       (xyz_new[2, :] - old_y)^2 +
+                       (xyz_new[3, :] - old_z)^2
+                ),
+            )
             min_dist = min(min_dist, dist_this_spec)
         end
         if min_dist > max_search_dist
@@ -149,11 +195,24 @@ function run_interp(comm::MPI.Comm, command_args::CmdArgs)
         # * main computation part
         # read old model
         model_gll_old = zeros(Float32, nmodel, NGLLX, NGLLY, NGLLZ, nspec_old)
-        sem_io_read_gll_file_n!(command_args.model_dir, iproc_old, command_args.model_tags, nmodel, model_gll_old)
+        sem_io_read_gll_file_n!(
+            command_args.model_dir,
+            iproc_old,
+            command_args.model_tags,
+            nmodel,
+            model_gll_old,
+        )
 
         # locate points in this mesh slice
         nnearest = 10
-        location_1slice = sem_mesh_locate_kdtree2(mesh_old, ngll_new_this_rank, xyz_new, nnearest, max_search_dist, max_misloc)
+        location_1slice = sem_mesh_locate_kdtree2(
+            mesh_old,
+            ngll_new_this_rank,
+            xyz_new,
+            nnearest,
+            max_search_dist,
+            max_misloc,
+        )
 
         for igll = 1:ngll_new_this_rank
             if (stat_final[igll] == 1 && location_1slice[igll].stat == 1)
@@ -161,9 +220,15 @@ function run_interp(comm::MPI.Comm, command_args::CmdArgs)
                 continue
             end
             # for point located inside one element in the first time or closer to one element than located before
-            if location_1slice[igll].stat == 1 || (location_1slice[igll].stat == 0 && location_1slice[igll].misloc < misloc_final[igll])
+            if location_1slice[igll].stat == 1 || (
+                location_1slice[igll].stat == 0 &&
+                location_1slice[igll].misloc < misloc_final[igll]
+            )
                 for imodel = 1:nmodel
-                    model_interp_this_rank[imodel,igll] = sum(location_1slice[igll].lagrange .* model_gll_old[imodel,:,:,:,location_1slice[igll].eid])
+                    model_interp_this_rank[imodel, igll] = sum(
+                        location_1slice[igll].lagrange .*
+                        model_gll_old[imodel, :, :, :, location_1slice[igll].eid],
+                    )
                 end
                 stat_final[igll] = location_1slice[igll].stat
                 misloc_final[igll] = location_1slice[igll].misloc
@@ -176,7 +241,7 @@ function run_interp(comm::MPI.Comm, command_args::CmdArgs)
             MPI.Win_unlock(rank, win_iproc_finished)
             all_iproc_finished = iproc_finished[1]
             # get iproc_finished from other processes, update all_iproc_finished
-            for each_rank in 0:(nrank - 1)
+            for each_rank = 0:(nrank-1)
                 if each_rank != rank
                     MPI.Win_lock(MPI.LOCK_EXCLUSIVE, each_rank, 0, win_iproc_finished)
                     received = similar(iproc_finished)
@@ -195,25 +260,42 @@ function run_interp(comm::MPI.Comm, command_args::CmdArgs)
     end
 
     # * combine model_interp_this_rank_tosend
-    all_model_interp_this_rank_tosend = MPI.Gather(model_interp_this_rank_tosend, root, comm)
+    all_model_interp_this_rank_tosend =
+        MPI.Gather(model_interp_this_rank_tosend, root, comm)
     all_ngll_new_this_rank = MPI.Gather(ngll_new_this_rank, root, comm)
     # * combine all_model_interp_this_rank_tosend into a single model_interp array
     # * model_interp should be a 3D array here, as we will convert model_interp_this_rank to a 2D array
     if isroot
         # reshape to (nmodel,max_ngll_new_this_rank*nrank)
-        all_model_interp_this_rank_tosend_2D = reshape(all_model_interp_this_rank_tosend, nmodel, div(length(all_model_interp_this_rank_tosend), nmodel))
-        model_interp = zeros(Float32, command_args.lonnpts, command_args.latnpts, command_args.vnpts, nmodel)
-        for each_rank in 0:(length(all_ngll_new_this_rank) - 1)
+        all_model_interp_this_rank_tosend_2D = reshape(
+            all_model_interp_this_rank_tosend,
+            nmodel,
+            div(length(all_model_interp_this_rank_tosend), nmodel),
+        )
+        model_interp = zeros(
+            Float32,
+            command_args.lonnpts,
+            command_args.latnpts,
+            command_args.vnpts,
+            nmodel,
+        )
+        for each_rank = 0:(length(all_ngll_new_this_rank)-1)
             each_index = each_rank + 1
             each_coor_lat, each_coor_lon = get_coor(each_rank, command_args)
             # get the view of this rank
-            each_model_interp = @view(model_interp[each_coor_lon,each_coor_lat,:,:]) 
-            each_model_interp_this_rank_tosend = @view(all_model_interp_this_rank_tosend_2D[:,(each_rank * max_ngll_new_this_rank + 1):(each_rank + 1) * max_ngll_new_this_rank])
+            each_model_interp = @view(model_interp[each_coor_lon, each_coor_lat, :, :])
+            each_model_interp_this_rank_tosend = @view(
+                all_model_interp_this_rank_tosend_2D[
+                    :,
+                    (each_rank*max_ngll_new_this_rank+1):(each_rank+1)*max_ngll_new_this_rank,
+                ]
+            )
             id = 1
-            for vindex in 1:command_args.vnpts
-                for latindex in 1:length(each_coor_lat)
-                    for lonindex in 1:length(each_coor_lon)
-                        each_model_interp[lonindex,latindex,vindex,:] = each_model_interp_this_rank_tosend[:,id]
+            for vindex = 1:command_args.vnpts
+                for latindex = 1:length(each_coor_lat)
+                    for lonindex = 1:length(each_coor_lon)
+                        each_model_interp[lonindex, latindex, vindex, :] =
+                            each_model_interp_this_rank_tosend[:, id]
                         id += 1
                     end
                 end

@@ -16,7 +16,7 @@ for n in readdir(scriptsdir)
     p = joinpath(scriptsdir, n)
     t_jl = joinpath(targetdir, n)
     # remove the ".jl" tag 
-    t = join(split(t_jl, ".")[1:end - 1], ".")
+    t = join(split(t_jl, ".")[1:end-1], ".")
     if isfile(p)
         s = "adding $p $t"
         if isfile(t)
