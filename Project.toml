@@ -1,6 +1,6 @@
+authors = ["ziyixi <ziyixi@mail.ustc.edu.cn>"]
 name = "SpecfemUtils"
 uuid = "76d755e8-4c39-4ced-ac7c-fec8cf5acd41"
-authors = ["ziyixi <ziyixi@mail.ustc.edu.cn>"]
 version = "0.1.0"
 
 [deps]
@@ -12,3 +12,4 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 MPI = "da04e1cc-30fd-572f-bb4f-1f8673147195"
 NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 NearestNeighbors = "b8a86587-4115-5ab1-83bc-aa920d37bbce"
+libspecfemUtils_jll = "a60b80ba-484f-5667-bf37-cf11dc804be2"

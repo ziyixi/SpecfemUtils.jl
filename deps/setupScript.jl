@@ -1,7 +1,11 @@
 # symlink scripts so we can call via ~/.specfem/debugScript.jl
 println("running SpecfemUtils/build.jl")
 scriptsdir = normpath(joinpath(@__DIR__, "..", "scripts"))
-targetdir = expanduser("~/.specfem")
+if haskey(ENV, "SPECFEM_UTILS_BIN")
+    targetdir = ENV["SPECFEM_UTILS_BIN"]
+else
+    targetdir = joinpath(DEPOT_PATH[1], "bin")
+end
 if !isdir(targetdir)
     println("creating $targetdir")
     mkdir(targetdir)
