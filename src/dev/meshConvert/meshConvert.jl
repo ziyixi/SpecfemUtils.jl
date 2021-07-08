@@ -1,11 +1,12 @@
-module MeshInterpreter
+module MeshConvert
 using MPI
 
-include("./constants.jl")
+include("../shared/constants.jl")
+include("../shared/types.jl")
 include("./types.jl")
-include("./argparse.jl")
+include("./argParse.jl")
 include("../shared/readfiles.jl")
-include("./utils.jl")
+# include("./utils.jl")
 include("../shared/kdtree.jl")
 include("./interp.jl")
 

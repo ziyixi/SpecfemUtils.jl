@@ -1,3 +1,3 @@
 module SpecfemUtils
-include("meshInterpreter/meshInterpreter.jl")
+include("meshInterp/meshInterp.jl")
 end
