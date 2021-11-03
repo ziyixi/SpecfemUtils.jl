@@ -144,7 +144,7 @@ function run_interp(comm::MPI.Comm, command_args::CmdArgs)
     misloc_final = zeros(Float32, ngll_new_this_rank)
 
     stat_final .= -1
-    misloc_final .= 9999.0f0
+    misloc_final .= 9999999.0f0
 
     nmodel = length(command_args.model_tags)
 

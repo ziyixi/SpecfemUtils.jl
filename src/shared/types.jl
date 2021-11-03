@@ -1,5 +1,3 @@
-import Geodesy
-
 mutable struct Sem_mesh_data
     nspec::Integer
     nglob::Integer
