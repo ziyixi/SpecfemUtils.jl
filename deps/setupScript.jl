@@ -19,17 +19,7 @@ for n in readdir(scriptsdir)
     t = join(split(t_jl, ".")[1:end-1], ".")
     if isfile(p)
         s = "adding $p $t"
-        if isfile(t)
-            s *= " (overwriting)"
-            @show t
-            rm(t)
-        end
-        println(s)
-        open(t, "w") do f
-            write(f, raw"#!/usr/bin/env bash")
-            write(f, "\n")
-            write(f, "/usr/bin/env bash \"$p\" \$@")
-        end
+        cp(p,t)
         chmod(t, 0o755) # all can rx, user can rwx
     end
 end
