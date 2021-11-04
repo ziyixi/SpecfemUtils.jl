@@ -19,7 +19,7 @@ for n in readdir(scriptsdir)
     t = join(split(t_jl, ".")[1:end-1], ".")
     if isfile(p)
         s = "adding $p $t"
-        cp(p,t)
+        cp(p,t,force=true)
         chmod(t, 0o755) # all can rx, user can rwx
     end
 end
